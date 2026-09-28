@@ -4,21 +4,21 @@ const uint8_t LED1_PIN              = 21;   // Output to LED 1
 const uint8_t LED2_PIN              = 22;   // Output to LED 2
 
 const unsigned long TRIG_PULSE_US       = 50;
-const unsigned long CAPTURE_INTERVAL_MS = 500;
+const unsigned long CAPTURE_INTERVAL_MS = 200;
 const unsigned int NUM_MODES            = 2;
 
 volatile bool captureFinished = false;
 
 // Interrupt diagnostics
-volatile unsigned long interruptCount = 0;
+// volatile unsigned long interruptCount = 0;
 volatile unsigned long lastInterruptMicros = 0;
-volatile unsigned long interruptIntervals[10];
-volatile unsigned int interruptIndex = 0;
+// volatile unsigned long interruptIntervals[10];
+// volatile unsigned int interruptIndex = 0;
 
 unsigned int currentFrameNum = 1;
 bool toggleState = false;
 
-unsigned long lastCaptureStartTime = 0;
+unsigned long lastCaptureExpectedStartTime = 0;
 
 
 // ============================================================
@@ -31,15 +31,15 @@ void IRAM_ATTR onCaptureFinished() {
         return;
     }
 
-    interruptCount++;
+    // interruptCount++;
 
     // Store time since previous interrupt
-    if (interruptIndex < 10) {
-        interruptIntervals[interruptIndex] =
-            now - lastInterruptMicros;
+    // if (interruptIndex < 10) {
+    //     interruptIntervals[interruptIndex] =
+    //         now - lastInterruptMicros;
 
-        interruptIndex++;
-    }
+    //     interruptIndex++;
+    // }
 
     lastInterruptMicros = now;
 
@@ -77,7 +77,6 @@ void triggerCamera() {
 // ============================================================
 
 void setup() {
-
     Serial.begin(115200);
 
     pinMode(CAMERA_TRIG_PIN, OUTPUT);
@@ -98,7 +97,7 @@ void setup() {
 
     mode_1();
 
-    lastCaptureStartTime = millis();
+    lastCaptureExpectedStartTime = millis();
 
     Serial.println("Setup completed.");
 }
@@ -121,18 +120,17 @@ void loop() {
 
         captureFinished = false;
 
-        unsigned long count = interruptCount;
-        unsigned int index = interruptIndex;
+        // unsigned long count = interruptCount;
+        // unsigned int index = interruptIndex;
 
-        unsigned long intervals[10];
+        // unsigned long intervals[10];
 
-        for (unsigned int i = 0; i < index; i++) {
-            intervals[i] = interruptIntervals[i];
-        }
+        // for (unsigned int i = 0; i < index; i++) {
+        //     intervals[i] = interruptIntervals[i];
+        // }
 
         interrupts();
         toggleState = !toggleState;
-        Serial.println("Toggled");
         if (toggleState) {
             mode_2();
         } else {
@@ -149,23 +147,23 @@ void loop() {
         // Print interrupt diagnostics
         // ----------------------------------------------------
 
-        Serial.print("Interrupt count: ");
-        Serial.println(count);
+        // Serial.print("Interrupt count: ");
+        // Serial.println(count);
 
-        Serial.print("Interrupt intervals: ");
+        // Serial.print("Interrupt intervals: ");
 
-        for (unsigned int i = 0; i < index; i++) {
+        // for (unsigned int i = 0; i < index; i++) {
 
-            Serial.print(intervals[i]);
+        //     Serial.print(intervals[i]);
 
-            Serial.print(" us");
+        //     Serial.print(" us");
 
-            if (i < index - 1) {
-                Serial.print(", ");
-            }
-        }
+        //     if (i < index - 1) {
+        //         Serial.print(", ");
+        //     }
+        // }
 
-        Serial.println();
+        // Serial.println();
     }
 
 
@@ -173,18 +171,18 @@ void loop() {
     // Start new capture sequence
     // --------------------------------------------------------
 
-    if (millis() - lastCaptureStartTime >= CAPTURE_INTERVAL_MS) {
+    if (millis() - lastCaptureExpectedStartTime >= CAPTURE_INTERVAL_MS) {
 
         currentFrameNum = 1;
         toggleState = false;
 
-        lastCaptureStartTime += CAPTURE_INTERVAL_MS;
+        lastCaptureExpectedStartTime += CAPTURE_INTERVAL_MS;
 
         // Reset interrupt diagnostics
         noInterrupts();
 
-        interruptCount = 0;
-        interruptIndex = 0;
+        // interruptCount = 0;
+        // interruptIndex = 0;
         lastInterruptMicros = 0;
 
         interrupts();

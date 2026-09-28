@@ -4,12 +4,13 @@ import yaml
 import os
 from pathlib import Path
 
-##TODO: A temporary hack
+# TODO: A temporary hack
 PROJECT_ROOT = Path(__file__).parent.parent.parent.resolve()
 WORKSPACE = PROJECT_ROOT
 CONFIG_PATH = os.path.join(WORKSPACE, "config.yaml")
 CONFIG_TEMPLATE_PATH = os.path.join(WORKSPACE, "config.template.yaml")
-    
+
+
 class CameraConfig(BaseModel):
     acquisition_frame_rate: float = Field(alias="AcquisitionFrameRate")
     exposure_time: float = Field(alias="ExposureTime")
@@ -21,10 +22,11 @@ class CameraConfig(BaseModel):
 
     @field_validator("pixel_format", mode="after")
     def validate_pixel_format(cls, format: str):
-        if format in ['Mono8', 'Mono16']:
+        if format in ['Mono8', 'Mono16', 'RGB8Packed', 'BayerRG8', 'BayerRG16', 'Mono10Packed', 'BayerRG10Packed', 'Mono12Packed', 'BayerRG12Packed', 'YUV411Packed', 'YUV422Packed', 'YUV444Packed', 'Mono10p', 'BayerRG10p', 'Mono12p', 'BayerRG12p', 'YCbCr8', 'YCbCr422_8', 'YCbCr411_8', 'BGR8', 'BGRa8']:
             return format
-        raise ValueError("Pixel format has to be either 'Mono8' or 'Mono16'")
-    
+        raise ValueError("Unrecognizable pixel format")
+
+
 class ImageAcquisitionConfig(BaseModel):
     image_save_dir: Path
     camera: CameraConfig
@@ -36,6 +38,7 @@ class ImageAcquisitionConfig(BaseModel):
         p.mkdir(parents=True, exist_ok=True)
 
         return p
+
 
 class AppConfig(BaseModel):
     """Root configuration model"""

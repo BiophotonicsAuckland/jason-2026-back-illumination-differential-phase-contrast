@@ -115,8 +115,8 @@ class PySpinCamera():
 
             frame_id = image_result.GetFrameID()
 
-            if image_result.GetPixelFormatName() == 'Mono8':
-                image_data = image_result.GetNDArray()
+            if image_result.GetPixelFormatName() in ['Mono8', 'BayerRG8']:
+                image_data = image_result.GetNDArray()[0::2,0::2]
             else:
                 image_converted = self._img_processor.Convert(image_result, PySpin.PixelFormat_Mono16)
                 image_data = image_converted.GetNDArray()
