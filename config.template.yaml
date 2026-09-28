@@ -1,0 +1,11 @@
+version: 0.0.1
+image_acquisition:
+  image_save_dir: 'images'
+  camera:
+    AcquisitionFrameRate: 30
+    ExposureTime: 120000
+    OffsetX: 0
+    OffsetY: 0
+    Width: 1536
+    Height: 1536
+    PixelFormat: 'Mono8'
