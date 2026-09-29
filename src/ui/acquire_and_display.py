@@ -25,7 +25,6 @@ class VideoThread(QThread):
         super().__init__()
         self._run_flag = True
         self.camera = camera_impl  # PySpinCamera(0)
-        self.camera.open()
 
         self._batch_size = batch_size
         self._exit_ready_flag = threading.Event()
@@ -38,7 +37,8 @@ class VideoThread(QThread):
         return (frame_id % self._batch_size - self._batch_start_frame_id % self._batch_size) % self._batch_size
 
     def run(self):
-        if self.camera.cam is None:
+        success = self.camera.open()
+        if not success:
             self._exit_ready_flag.set()
             self.error_signal.emit("Camera cannot be found")
             return
@@ -365,8 +365,10 @@ class HistogramCanvas(pg.PlotWidget):
     def plot_histogram(self, hist):
         self.graph.setData(np.arange(len(hist)+1), hist)
 
+
 class ImageCanvas(pg.PlotWidget):
     hover_signal = pyqtSignal(int, int, float)
+
     def __init__(self, pixel_bits=8):
         super().__init__()
         self.image_item = pg.ImageItem()
@@ -377,14 +379,14 @@ class ImageCanvas(pg.PlotWidget):
         self.showAxis('left', False)
         self.setAspectLocked(True)
 
-        colormap = pg.ColorMap([0.0, 1.0], np.array([[0, 0, 0],[255, 255, 255]], dtype=np.ubyte))
+        colormap = pg.ColorMap([0.0, 1.0], np.array([[0, 0, 0], [255, 255, 255]], dtype=np.ubyte))
         self.image_item.setColorMap(colormap)
         self.scene().sigMouseMoved.connect(self.on_mouse_moved)
         self.setRenderHint(QPainter.SmoothPixmapTransform, True)
 
     def set_image(self, image: np.ndarray):
         if image.dtype in [np.uint8, np.uint16]:
-            self.image_item.setImage(image.T, levels=[0, 255 if image.dtype==np.uint8 else 65535])
+            self.image_item.setImage(image.T, levels=[0, 255 if image.dtype == np.uint8 else 65535])
         else:
             self.image_item.setImage(image.T, autoLevels=True)
 
@@ -392,7 +394,7 @@ class ImageCanvas(pg.PlotWidget):
         if self.sceneBoundingRect().contains(pos):
             mouse_point = self.plotItem.vb.mapSceneToView(pos)
             x, y = int(mouse_point.x()), int(mouse_point.y())
-            
+
             # Check array bounds
             image = self.image_item.image
             if image is None:
@@ -404,16 +406,18 @@ class ImageCanvas(pg.PlotWidget):
             else:
                 self.hover_signal.emit(-1, -1, 0)
 
+
 class App(QWidget):
     def __init__(self, camera_impl, lcd_controller_impl):
         super().__init__()
         self.setWindowTitle("Stream")
-        self.image_canvas = ImageCanvas(8 if AppConfigManager.config.image_acquisition.camera.pixel_format=='Mono8' else 16)
+        self.image_canvas = ImageCanvas(
+            8 if AppConfigManager.config.image_acquisition.camera.pixel_format == 'Mono8' else 16)
         self.hist_canvas = HistogramCanvas(self)
         self.capture_btn = QPushButton("Capture")
         self.config_btn = QPushButton("Reload configuration")
         self.info_label = QLabel("Hover over the image")
-        
+
         self.image_canvas.hover_signal.connect(self.update_info_label)
 
         # Create thread
@@ -534,7 +538,7 @@ class App(QWidget):
 if __name__ == "__main__":
     from adapters.camera.camera_mock import PySpinCamera
     from adapters.lcd.lcd_mock import LCDController
-    
+
     app = QApplication(sys.argv)
     a = App(PySpinCamera(), LCDController())
     a.show()

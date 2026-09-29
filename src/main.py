@@ -7,10 +7,11 @@ from adapters.lcd.lcd_mock import LCDController
 from ui.acquire_and_display import App
 
 if __name__ == "__main__":
-    camera_impl = PySpinCamera()
     lcd_impl = LCDController()
+    camera_impl = PySpinCamera()
 
     app = QApplication(sys.argv)
     a = App(camera_impl, lcd_impl)
     a.show()
+
     sys.exit(app.exec_())

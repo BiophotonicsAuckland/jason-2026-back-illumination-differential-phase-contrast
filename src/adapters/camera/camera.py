@@ -7,9 +7,9 @@ from core.config import AppConfigManager
 class PySpinCamera():
     def __init__(self, camera_idx=0):
         self.camera_idx = camera_idx
-        self.system: PySpin.System = PySpin.System.GetInstance()
         self.cam: PySpin.CameraPtr = None
         self.cam_list: PySpin.CameraList = None
+        self.system: PySpin.System = PySpin.System.GetInstance()
         self.is_acquisiting = False
         self._img_processor = PySpin.ImageProcessor()
 
@@ -25,19 +25,25 @@ class PySpinCamera():
         self._set_attribute_value(self.cam.AcquisitionFrameRate, config.acquisition_frame_rate)
 
     def open(self):
-        # Retrieve list of cameras from the system
+        try:
+            return self._open()
+        except Exception as e:
+            print(f"Caught exception {e}")
+            return False
+
+    def _open(self):
         self.cam_list = self.system.GetCameras()
 
         num_cameras = self.cam_list.GetSize()
 
         print(f'Number of cameras detected: {num_cameras}')
 
-        # Finish if there are no cameras
+        # Shut down if there are no cameras
         if num_cameras == 0:
             self.cam_list.Clear()
             self.system.ReleaseInstance()
             print('Not enough cameras!')
-            return None
+            return False
 
         self.cam = self.cam_list[self.camera_idx]
         self.cam.Init()
@@ -46,9 +52,6 @@ class PySpinCamera():
         for i in [self.cam.AutoExposureTargetGreyValueAuto, self.cam.ExposureAuto, self.cam.GainAuto]:
             i.SetValue(0)
 
-        # self._set_attribute_value(
-        #     self.cam.TLStream.StreamBufferHandlingMode, 'NewestOnly')
-        # self._set_attribute_value(self.cam.AcquisitionMode, 'Continuous')
         self._set_attribute_value(self.cam.TriggerMode, 'Off')
         self._set_attribute_value(self.cam.TriggerSource, 'Line0')
         self._set_attribute_value(self.cam.TriggerOverlap, 'ReadOut')
@@ -61,7 +64,6 @@ class PySpinCamera():
 
         self._set_attribute_value(self.cam.LineSelector, 'Line2')
         self._set_attribute_value(self.cam.LineMode, 'Output')
-        
 
         self._set_attribute_value(self.cam.TLStream.StreamBufferCountMode, 'Manual')
         self._set_attribute_value(self.cam.TLStream.StreamBufferCountManual, 50)
@@ -70,16 +72,8 @@ class PySpinCamera():
         self._set_attribute_value(self.cam.OffsetY, 0)
         self._set_attribute_value(self.cam.AcquisitionFrameRateEnable, True)
 
-        # self._set_attribute_value(self.cam.LineSource, 'ExposureActive')
         self.configure()
-
-        # self._set_attribute_value(self.cam.TLStream.StreamBufferCountManual, 3)
-        # self._set_attribute_value(self.cam.DeviceLinkThroughputLimit, 200000000)
-        # print(self.cam.TLStream.StreamBufferCountManual.GetMin())
-        # print(self.cam.TLStream.StreamBufferCountManual.GetMax())
-        # print(print_node(self.cam.AutoExposureTargetGreyValueAuto))
-        # print(print_node(self.cam.ExposureAuto))
-        print(PySpinCamera._print_node(self.cam.PixelFormat))
+        return True
 
     def close(self):
         if self.is_acquisiting:
@@ -92,10 +86,7 @@ class PySpinCamera():
             self.cam.DeInit()
         del self.cam
 
-        # Clear camera list before releasing system
         self.cam_list.Clear()
-
-        # Release system instance
         self.system.ReleaseInstance()
 
     def get_image_data(self) -> np.ndarray:
@@ -115,8 +106,11 @@ class PySpinCamera():
 
             frame_id = image_result.GetFrameID()
 
-            if image_result.GetPixelFormatName() in ['Mono8', 'BayerRG8']:
-                image_data = image_result.GetNDArray()[0::2,0::2]
+            if image_result.GetPixelFormatName() == 'Mono8':
+                image_data = image_result.GetNDArray()
+            elif image_result.GetPixelFormatName() == 'BayerRG8':
+                ## Only retrieve RED channel
+                image_data = image_result.GetNDArray()[0::2, 0::2]
             else:
                 image_converted = self._img_processor.Convert(image_result, PySpin.PixelFormat_Mono16)
                 image_data = image_converted.GetNDArray()
@@ -160,7 +154,6 @@ class PySpinCamera():
             # Cast to CEnumEntry
             enum_entry = PySpin.CEnumEntryPtr(entry)
             if PySpin.IsAvailable(enum_entry) and PySpin.IsReadable(enum_entry):
-                # 4. Get symbolic name
                 possible_values.append(enum_entry.GetSymbolic())
 
         return possible_values
