@@ -369,7 +369,7 @@ class HistogramCanvas(pg.PlotWidget):
 class ImageCanvas(pg.PlotWidget):
     hover_signal = pyqtSignal(int, int, float)
 
-    def __init__(self, pixel_bits=8):
+    def __init__(self):
         super().__init__()
         self.image_item = pg.ImageItem()
         self.addItem(self.image_item)
@@ -386,9 +386,9 @@ class ImageCanvas(pg.PlotWidget):
 
     def set_image(self, image: np.ndarray):
         if image.dtype in [np.uint8, np.uint16]:
-            self.image_item.setImage(image.T, levels=[0, 255 if image.dtype == np.uint8 else 65535])
+            self.image_item.setImage(cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE), levels=[0, 255 if image.dtype == np.uint8 else 65535])
         else:
-            self.image_item.setImage(image.T, autoLevels=True)
+            self.image_item.setImage(cv2.rotate(image, cv2.ROTATE_90_CLOCKWISE), autoLevels=True)
 
     def on_mouse_moved(self, pos):
         if self.sceneBoundingRect().contains(pos):
@@ -402,7 +402,7 @@ class ImageCanvas(pg.PlotWidget):
                 return
             nrows, ncols = image.shape
             if 0 <= x < ncols and 0 <= y < nrows:
-                self.hover_signal.emit(x, y, image[y, x])
+                self.hover_signal.emit(x, y, image[x, y])
             else:
                 self.hover_signal.emit(-1, -1, 0)
 
@@ -411,8 +411,7 @@ class App(QWidget):
     def __init__(self, camera_impl, lcd_controller_impl):
         super().__init__()
         self.setWindowTitle("Stream")
-        self.image_canvas = ImageCanvas(
-            8 if AppConfigManager.config.image_acquisition.camera.pixel_format == 'Mono8' else 16)
+        self.image_canvas = ImageCanvas()
         self.hist_canvas = HistogramCanvas(self)
         self.capture_btn = QPushButton("Capture")
         self.config_btn = QPushButton("Reload configuration")
